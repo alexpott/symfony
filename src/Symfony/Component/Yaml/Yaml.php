@@ -22,11 +22,21 @@ use Symfony\Component\Yaml\Exception\ParseException;
  */
 class Yaml
 {
+    static public $use_extension    = true;
     static public $enablePhpParsing = false;
 
     static public function enablePhpParsing()
     {
         self::$enablePhpParsing = true;
+    }
+
+    static public function use_extension()
+    {
+        if (self::$use_extension && extension_loaded('yaml')) {
+            return true;
+        } else {
+            return false;
+        }
     }
 
     /**
@@ -75,17 +85,21 @@ class Yaml
                 $input = file_get_contents($file);
             }
         }
+        
+        if (self::use_extension()) {
+            return yaml_parse($input);
+        } else {
+            $yaml = new Parser();
 
-        $yaml = new Parser();
+            try {
+                return $yaml->parse($input);
+            } catch (ParseException $e) {
+                if ($file) {
+                    $e->setParsedFile($file);
+                }
 
-        try {
-            return $yaml->parse($input);
-        } catch (ParseException $e) {
-            if ($file) {
-                $e->setParsedFile($file);
+                throw $e;
             }
-
-            throw $e;
         }
     }
 
@@ -104,8 +118,12 @@ class Yaml
      */
     static public function dump($array, $inline = 2)
     {
-        $yaml = new Dumper();
+        if (self::use_extension()) {
+          return yaml_emit($array);
+        } else {
+          $yaml = new Dumper();
 
-        return $yaml->dump($array, $inline);
+          return $yaml->dump($array, $inline);
+        }
     }
 }
